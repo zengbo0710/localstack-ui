@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bucket_name }} - LocalStack S3 Browser{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Buckets</a></li>
+        {% if prefix %}
+            <li class="breadcrumb-item"><a href="{{ url_for('list_objects', bucket_name=bucket_name) }}">{{ bucket_name }}</a></li>
+            {% set breadcrumb_parts = prefix.split('/') %}
+            {% for i in range(breadcrumb_parts|length - 1) %}
+                {% if breadcrumb_parts[i] %}
+                    {% set current_path = '/'.join(breadcrumb_parts[:i+1]) + '/' %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('list_objects', bucket_name=bucket_name, prefix=current_path) }}">
+                            {{ breadcrumb_parts[i] }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            {% if breadcrumb_parts[-1] %}
+                <li class="breadcrumb-item active">{{ breadcrumb_parts[-1] }}</li>
+            {% endif %}
+        {% else %}
+            <li class="breadcrumb-item active">{{ bucket_name }}</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            {% if prefix %}
+                {{ prefix.split('/')[-2] if prefix.endswith('/') else prefix.split('/')[-1] }}
+            {% else %}
+                {{ bucket_name }}
+            {% endif %}
+        </h2>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Last Modified</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if parent_prefix is not none %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('list_objects', bucket_name=bucket_name, prefix=parent_prefix) }}">
+                                <i class="fas fa-level-up-alt me-2"></i> ..
+                            </a>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                {% endif %}
+                
+                {% for folder in folders %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('list_objects', bucket_name=bucket_name, prefix=folder) }}">
+                                <i class="fas fa-folder folder-icon"></i> {{ folder.replace(prefix, '').rstrip('/') }}/
+                            </a>
+                        </td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                {% endfor %}
+                
+                {% for object in objects %}
+                    {% if object.Key != prefix %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-file file-icon"></i> {{ object.Key.replace(prefix, '') }}
+                            </td>
+                            <td>{{ '%0.2f'|format(object.Size / 1024) }} KB</td>
+                            <td>{{ object.LastModified.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                <a href="{{ url_for('download_object', bucket_name=bucket_name, object_key=object.Key) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if next_token %}
+    <div class="mt-3 text-center">
+        <a href="{{ url_for('list_objects', bucket_name=bucket_name, prefix=prefix, continuation_token=next_token) }}" class="btn btn-primary">
+            Load More
+        </a>
+    </div>
+{% endif %}
+{% endblock %}
